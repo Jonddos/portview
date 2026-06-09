@@ -51,7 +51,7 @@ pub fn get_process_info(pid: u32) -> Option<ProcessInfo> {
 
     Some(ProcessInfo {
         pid,
-        name: proc.name().to_string_lossy().to_string(),
+        name: proc.name().to_string(),
         exe_path: proc.exe().map(|p| p.to_string_lossy().to_string()),
         user: proc.user_id().map(|u| u.to_string()),
         memory_bytes: proc.memory(),

@@ -1,6 +1,6 @@
 use crate::core::{
     kill_process, scan_ports, get_process_info,
-    PortEntry, ProcessInfo, KillError, ScanError,
+    PortEntry, ProcessInfo,
 };
 use tracing::{error, info};
 

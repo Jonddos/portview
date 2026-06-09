@@ -107,39 +107,34 @@ pub fn scan_ports() -> Result<Vec<PortEntry>, ScanError> {
 // ─────────────────────────────────────────────
 
 fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
-    use netstat2::{SocketInfo::Tcp, SocketInfo::Udp};
+    use netstat2::ProtocolSocketInfo;
 
-    match socket {
-        Tcp(tcp) => {
-            let pid = tcp.associated_pids.first().copied();
-            let (process_name, exe_path, user) = process_info(pid, sys);
-            Some(PortEntry {
-                port: tcp.local_port(),
-                protocol: Protocol::Tcp,
-                state: map_tcp_state(&tcp.state),
-                pid,
-                process_name,
-                exe_path,
-                user,
-                local_addr: format!("{}:{}", tcp.local_addr(), tcp.local_port()),
-                remote_addr: format!("{}:{}", tcp.remote_addr(), tcp.remote_port()),
-            })
-        }
-        Udp(udp) => {
-            let pid = udp.associated_pids.first().copied();
-            let (process_name, exe_path, user) = process_info(pid, sys);
-            Some(PortEntry {
-                port: udp.local_port(),
-                protocol: Protocol::Udp,
-                state: ConnectionState::Unknown,
-                pid,
-                process_name,
-                exe_path,
-                user,
-                local_addr: format!("{}:{}", udp.local_addr(), udp.local_port()),
-                remote_addr: String::new(),
-            })
-        }
+    let pid = socket.associated_pids.first().copied();
+    let (process_name, exe_path, user) = process_info(pid, sys);
+
+    match &socket.protocol_socket_info {
+        ProtocolSocketInfo::Tcp(tcp) => Some(PortEntry {
+            port: tcp.local_port,
+            protocol: Protocol::Tcp,
+            state: map_tcp_state(&tcp.state),
+            pid,
+            process_name,
+            exe_path,
+            user,
+            local_addr: format!("{}:{}", tcp.local_addr, tcp.local_port),
+            remote_addr: format!("{}:{}", tcp.remote_addr, tcp.remote_port),
+        }),
+        ProtocolSocketInfo::Udp(udp) => Some(PortEntry {
+            port: udp.local_port,
+            protocol: Protocol::Udp,
+            state: ConnectionState::Unknown,
+            pid,
+            process_name,
+            exe_path,
+            user,
+            local_addr: format!("{}:{}", udp.local_addr, udp.local_port),
+            remote_addr: String::new(),
+        }),
     }
 }
 
@@ -155,7 +150,7 @@ fn process_info(pid: Option<u32>, sys: &System) -> (String, Option<String>, Opti
         return (String::new(), None, None);
     };
 
-    let name = proc.name().to_string_lossy().to_string();
+    let name = proc.name().to_string();
     let path = proc
         .exe()
         .map(|p| p.to_string_lossy().to_string());
