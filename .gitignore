@@ -1,0 +1,33 @@
+# ── Rust / Cargo ────────────────────────────────────────────────────
+/target/
+src-tauri/target/
+Cargo.lock
+
+# ── Node.js ──────────────────────────────────────────────────────────
+node_modules/
+ui/node_modules/
+ui/dist/
+ui/.vite/
+
+# ── Tauri ────────────────────────────────────────────────────────────
+src-tauri/gen/
+WixTools/
+*.dmg
+*.app
+*.msi
+*.exe
+*.deb
+*.rpm
+*.AppImage
+
+# ── Sistema ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.log
+
+# ── IDE ──────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.iml

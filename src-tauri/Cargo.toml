@@ -1,0 +1,67 @@
+[package]
+name = "portview"
+version = "0.1.0"
+description = "Visor gráfico multiplataforma de puertos de red"
+authors = ["PortView Contributors"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "portview_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "portview"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Framework de escritorio
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+
+# Serialización (para IPC con el frontend)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Escaneo de puertos y sockets
+netstat2 = "0.9"
+
+# Info de procesos (nombre, ruta, usuario, kill)
+sysinfo = "0.30"
+
+# Manejo de errores
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+[target.'cfg(windows)'.dependencies]
+# APIs nativas de Windows (fallback si netstat2 no es suficiente)
+windows = { version = "0.58", features = [
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_Networking_WinSock",
+  "Win32_Foundation",
+  "Win32_System_ProcessStatus",
+  "Win32_Security",
+] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
