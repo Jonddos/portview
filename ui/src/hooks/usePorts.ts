@@ -72,9 +72,8 @@ export function usePorts(options: UsePortsOptions = {}): UsePortsReturn {
   }, [refresh, refreshInterval]);
 
   // ── Matar proceso ───────────────────────────────────────────────────
-  const killProcess = useCallback(async (pid: number, processName: string) => {
+  const killProcess = useCallback(async (pid: number, _processName: string) => {
     await invoke("kill_port", { pid });
-    // Refrescar inmediatamente para reflejar el cambio
     await refresh();
   }, [refresh]);
 
