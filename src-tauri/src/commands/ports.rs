@@ -37,29 +37,14 @@ pub async fn get_process_detail(pid: u32) -> Option<ProcessInfo> {
 }
 
 /// Comprueba si la app está corriendo con privilegios elevados.
-///
-/// - Windows: verifica si el token actual es de administrador.
-/// - Unix: comprueba `getuid() == 0`.
 #[tauri::command]
 pub async fn check_privileges() -> bool {
-    #[cfg(windows)]
-    {
-        use std::process::Command;
-        // Intentar abrir el registro de sistema requiere admin
-        Command::new("net")
-            .args(["session"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    }
+    crate::privileges::is_elevated()
+}
 
-    #[cfg(unix)]
-    {
-        unsafe { libc::getuid() == 0 }
-    }
-
-    #[cfg(not(any(windows, unix)))]
-    {
-        false
-    }
+/// Relanza la app como administrador/root y cierra la instancia actual.
+/// Dispara el diálogo UAC en Windows.
+#[tauri::command]
+pub async fn relaunch_as_admin() -> Result<(), String> {
+    crate::privileges::relaunch_as_admin()
 }

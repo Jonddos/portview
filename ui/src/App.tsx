@@ -5,6 +5,7 @@ import { FilterBar } from "./components/FilterBar";
 import { KillDialog } from "./components/KillDialog";
 import { StatsBar } from "./components/StatsBar";
 import { ProcessDetail } from "./components/ProcessDetail";
+import { ElevationBanner } from "./components/ElevationBanner";
 import type { PortEntry } from "./types/port";
 
 const REFRESH_OPTIONS = [
@@ -115,6 +116,11 @@ export default function App() {
           <span>✕ {killError}</span>
           <button onClick={() => setKillError(null)} className="text-red-400 hover:text-red-600 ml-3">✕</button>
         </div>
+      )}
+
+      {/* ── Banner de elevación (solo en vista parcial) ─────────────── */}
+      {privilegeLevel === "partial" && (
+        <ElevationBanner onElevating={() => setKillSuccess(null)} />
       )}
 
       {/* ── Stats ───────────────────────────────────────────────────── */}

@@ -1,7 +1,8 @@
 pub mod core;
 pub mod commands;
+pub mod privileges;
 
-use commands::{list_ports, kill_port, check_privileges, get_process_detail};
+use commands::{list_ports, kill_port, check_privileges, get_process_detail, relaunch_as_admin};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,6 +22,7 @@ pub fn run() {
             kill_port,
             check_privileges,
             get_process_detail,
+            relaunch_as_admin,
         ])
         .run(tauri::generate_context!())
         .expect("Error al iniciar PortView");
