@@ -4,7 +4,7 @@
 
 PortView es una aplicación de escritorio que te permite **ver, filtrar y terminar** cualquier proceso que ocupe un puerto en tu máquina, con una interfaz clara y actualización en tiempo real.
 
-![PortView screenshot placeholder](docs/assets/screenshot-placeholder.png)
+![PortView — visor de puertos TCP/UDP](docs/assets/screenshot.png)
 
 ---
 
