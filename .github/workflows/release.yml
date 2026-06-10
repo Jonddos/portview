@@ -79,4 +79,4 @@ jobs:
             Ver el [CHANGELOG](https://github.com/Jonddos/portview/blob/main/CHANGELOG.md) para detalles completos.
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }} --config '{"build":{"beforeBuildCommand":""}}'
+          args: ${{ matrix.args }} --config ${{ github.workspace }}/.github/tauri-ci.conf.json
