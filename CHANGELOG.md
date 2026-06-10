@@ -6,6 +6,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/) y este
 
 ---
 
+## [0.2.0] - 2026-06-10
+
+### Añadido
+- **Soporte WSL2**: los puertos corriendo dentro de subsistemas Linux (Ubuntu, Debian, etc.) ahora son visibles en la tabla con un badge violeta **WSL**
+- **Kill de procesos WSL**: al matar un proceso WSL se elimina el grupo de procesos completo (master + workers), evitando que servidores como gunicorn o uvicorn respawneen
+- **Parseo multi-worker**: detecta correctamente el proceso master en stacks como `functions-framework`, `gunicorn` y `uvicorn` que muestran múltiples PIDs en `ss -tulnp`
+- **Fallback de detección**: si `ss` no está disponible en la distro WSL, hace fallback automático a `netstat`
+
+### Técnico
+- Nuevo módulo `core/wsl.rs`: `is_wsl_available()`, `scan_wsl_ports()`, `kill_wsl_process()`
+- Campo `source: String` en `PortEntry` (`"Windows"` | `"WSL: Ubuntu"` | …)
+- Comandos Tauri nuevos: `kill_wsl_process`, `wsl_available`
+- Frontend: `usePorts.killProcess` enruta según `source`
+
+---
+
 ## [0.1.0] - 2026-06-09
 
 ### Añadido

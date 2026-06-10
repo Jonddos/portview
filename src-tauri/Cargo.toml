@@ -1,6 +1,6 @@
 [package]
 name = "portview"
-version = "0.1.0"
+version = "0.2.0"
 description = "Visor gráfico multiplataforma de puertos de red"
 authors = ["PortView Contributors"]
 edition = "2021"
