@@ -6,6 +6,32 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.0.0/) y este
 
 ---
 
+## [0.3.4] - 2026-06-10
+
+### Añadido
+- **CI multiplataforma**: GitHub Actions compila y publica instaladores automáticamente al crear un tag `v*`
+  - Windows x64 → `.msi` + `.exe`
+  - macOS Apple Silicon (M1/M2/M3) → `.dmg`
+  - macOS Intel → `.dmg`
+  - Linux x64 → `.AppImage` + `.deb`
+- **Soporte Linux nativo**: escaneo de puertos en Linux mediante `ss -tulnp` (con fallback a `netstat`), sin depender de `netstat2`
+- **Badge de fuente correcto**: las entradas muestran `macOS` o `Linux` según el sistema operativo real
+
+### Corregido
+- **Build Linux**: `netstat2` v0.9.1 tiene un bug de compilación con `libc` moderno en Ubuntu 22.04 (`__be16` ambiguo). Movido a dependencia exclusiva de Windows/macOS; Linux usa `ss` nativo
+- **Permisos de CI**: configurados permisos `contents: write` para que el token de GitHub pueda crear releases
+- **`beforeBuildCommand` en CI**: el frontend ahora se compila en un paso dedicado antes de `tauri-action`, evitando errores de path en distintos runners
+- **Workflow duplicado**: eliminado `build.yml` redundante que causaba dos runs por tag
+
+### Técnico
+- `scanner.rs`: compilación condicional — `netstat2` en Windows/macOS, `scan_native_ss_ports()` en Linux
+- `wsl.rs`: nueva función `scan_native_ss_ports()` para Linux nativo (reutiliza parser de `ss`)
+- `Cargo.toml`: `netstat2` movido a `[target.'cfg(not(target_os = "linux"))'.dependencies]`
+- `.github/workflows/release.yml`: build multiplataforma con matrix strategy
+- `.github/tauri-ci.conf.json`: override de `beforeBuildCommand` para CI
+
+---
+
 ## [0.2.0] - 2026-06-10
 
 ### Añadido
