@@ -32,7 +32,30 @@ fn default_distro() -> String {
 }
 
 // ─────────────────────────────────────────────
-// Escaneo principal
+// Escaneo nativo Linux (sin WSL)
+// ─────────────────────────────────────────────
+
+/// Escanea puertos en Linux nativo usando `ss -tulnp` directamente.
+/// Reutiliza el mismo parser que el escaneo WSL.
+#[cfg(target_os = "linux")]
+pub fn scan_native_ss_ports() -> Vec<super::scanner::PortEntry> {
+    let output = Command::new("sh")
+        .args(["-c", "ss -tulnp 2>/dev/null || netstat -tlnp 2>/dev/null"])
+        .output();
+
+    match output {
+        Ok(o) if !o.stdout.is_empty() => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            let entries = parse_socket_output(&stdout, "Linux");
+            debug!("Linux nativo: {} entradas", entries.len());
+            entries
+        }
+        _ => Vec::new(),
+    }
+}
+
+// ─────────────────────────────────────────────
+// Escaneo principal (WSL)
 // ─────────────────────────────────────────────
 
 /// Devuelve los sockets activos dentro de WSL.

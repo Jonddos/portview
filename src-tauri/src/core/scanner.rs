@@ -1,3 +1,4 @@
+#[cfg(not(target_os = "linux"))]
 use netstat2::{get_sockets_info, AddressFamilyFlags, ProtocolFlags, SocketInfo};
 use serde::{Deserialize, Serialize};
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
@@ -32,23 +33,16 @@ pub enum ConnectionState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortEntry {
-    /// Puerto local
     pub port: u16,
     pub protocol: Protocol,
     pub state: ConnectionState,
-    /// PID del proceso dueño (None si no se pudo determinar)
     pub pid: Option<u32>,
-    /// Nombre del ejecutable (vacío si no disponible)
     pub process_name: String,
-    /// Ruta completa del ejecutable
     pub exe_path: Option<String>,
-    /// Usuario propietario del proceso
     pub user: Option<String>,
-    /// Dirección local en formato "ip:puerto"
     pub local_addr: String,
-    /// Dirección remota (vacío para sockets en escucha)
     pub remote_addr: String,
-    /// Origen del socket: "Windows" | "WSL"
+    /// "Windows" | "macOS" | "Linux" | "WSL: Ubuntu" …
     pub source: String,
 }
 
@@ -68,11 +62,44 @@ pub enum ScanError {
 // Función principal
 // ─────────────────────────────────────────────
 
-/// Devuelve todos los sockets TCP/UDP activos: Windows + WSL (si está instalado).
 pub fn scan_ports() -> Result<Vec<PortEntry>, ScanError> {
     debug!("Iniciando escaneo de puertos...");
 
-    // 1. Sockets Windows
+    #[cfg(not(target_os = "linux"))]
+    let mut entries = scan_with_netstat2()?;
+
+    #[cfg(target_os = "linux")]
+    let mut entries: Vec<PortEntry> = crate::core::wsl::scan_native_ss_ports();
+
+    let platform = if cfg!(windows) {
+        "Windows"
+    } else if cfg!(target_os = "macos") {
+        "macOS"
+    } else {
+        "Linux"
+    };
+    debug!("{}: {} entradas", platform, entries.len());
+
+    // WSL solo aplica en Windows
+    #[cfg(windows)]
+    {
+        let wsl_entries = crate::core::wsl::scan_wsl_ports();
+        debug!("WSL: {} entradas", wsl_entries.len());
+        entries.extend(wsl_entries);
+    }
+
+    debug!("Total: {} entradas", entries.len());
+    Ok(entries)
+}
+
+// ─────────────────────────────────────────────
+// Backend netstat2 (Windows + macOS)
+// ─────────────────────────────────────────────
+
+#[cfg(not(target_os = "linux"))]
+fn scan_with_netstat2() -> Result<Vec<PortEntry>, ScanError> {
+    let source = if cfg!(windows) { "Windows" } else { "macOS" };
+
     let af_flags    = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
     let proto_flags = ProtocolFlags::TCP | ProtocolFlags::UDP;
 
@@ -90,27 +117,14 @@ pub fn scan_ports() -> Result<Vec<PortEntry>, ScanError> {
     );
     sys.refresh_all();
 
-    let mut entries: Vec<PortEntry> = sockets
+    Ok(sockets
         .into_iter()
-        .filter_map(|s| socket_to_entry(&s, &sys))
-        .collect();
-
-    debug!("Windows: {} entradas", entries.len());
-
-    // 2. Sockets WSL (no bloquea si WSL no está disponible)
-    let wsl_entries = crate::core::wsl::scan_wsl_ports();
-    debug!("WSL: {} entradas", wsl_entries.len());
-    entries.extend(wsl_entries);
-
-    debug!("Total: {} entradas", entries.len());
-    Ok(entries)
+        .filter_map(|s| socket_to_entry(&s, &sys, source))
+        .collect())
 }
 
-// ─────────────────────────────────────────────
-// Helpers privados
-// ─────────────────────────────────────────────
-
-fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
+#[cfg(not(target_os = "linux"))]
+fn socket_to_entry(socket: &SocketInfo, sys: &System, source: &str) -> Option<PortEntry> {
     use netstat2::ProtocolSocketInfo;
 
     let pid = socket.associated_pids.first().copied();
@@ -127,7 +141,7 @@ fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
             user,
             local_addr: format!("{}:{}", tcp.local_addr, tcp.local_port),
             remote_addr: format!("{}:{}", tcp.remote_addr, tcp.remote_port),
-            source: "Windows".to_string(),
+            source: source.to_string(),
         }),
         ProtocolSocketInfo::Udp(udp) => Some(PortEntry {
             port: udp.local_port,
@@ -139,13 +153,16 @@ fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
             user,
             local_addr: format!("{}:{}", udp.local_addr, udp.local_port),
             remote_addr: String::new(),
-            source: "Windows".to_string(),
+            source: source.to_string(),
         }),
     }
 }
 
-/// Obtiene nombre, ruta y usuario de un PID usando sysinfo.
-fn process_info(pid: Option<u32>, sys: &System) -> (String, Option<String>, Option<String>) {
+// ─────────────────────────────────────────────
+// Helpers comunes
+// ─────────────────────────────────────────────
+
+pub fn process_info(pid: Option<u32>, sys: &System) -> (String, Option<String>, Option<String>) {
     let Some(pid) = pid else {
         return (String::new(), None, None);
     };
@@ -156,31 +173,28 @@ fn process_info(pid: Option<u32>, sys: &System) -> (String, Option<String>, Opti
         return (String::new(), None, None);
     };
 
-    let name = proc.name().to_string();
-    let path = proc
-        .exe()
-        .map(|p| p.to_string_lossy().to_string());
-    let user = proc
-        .user_id()
-        .map(|u| u.to_string());
+    let name  = proc.name().to_string();
+    let path  = proc.exe().map(|p| p.to_string_lossy().to_string());
+    let user  = proc.user_id().map(|u| u.to_string());
 
     (name, path, user)
 }
 
+#[cfg(not(target_os = "linux"))]
 fn map_tcp_state(state: &netstat2::TcpState) -> ConnectionState {
     use netstat2::TcpState::*;
     match state {
-        Listen => ConnectionState::Listen,
+        Listen      => ConnectionState::Listen,
         Established => ConnectionState::Established,
-        TimeWait => ConnectionState::TimeWait,
-        CloseWait => ConnectionState::CloseWait,
-        SynSent => ConnectionState::SynSent,
+        TimeWait    => ConnectionState::TimeWait,
+        CloseWait   => ConnectionState::CloseWait,
+        SynSent     => ConnectionState::SynSent,
         SynReceived => ConnectionState::SynReceived,
-        FinWait1 => ConnectionState::FinWait1,
-        FinWait2 => ConnectionState::FinWait2,
-        LastAck => ConnectionState::LastAck,
-        Closing => ConnectionState::Closing,
-        _ => ConnectionState::Unknown,
+        FinWait1    => ConnectionState::FinWait1,
+        FinWait2    => ConnectionState::FinWait2,
+        LastAck     => ConnectionState::LastAck,
+        Closing     => ConnectionState::Closing,
+        _           => ConnectionState::Unknown,
     }
 }
 
@@ -194,19 +208,15 @@ mod tests {
 
     #[test]
     fn scan_returns_entries() {
-        // En CI sin privilegios puede fallar con PermissionDenied; lo aceptamos.
         match scan_ports() {
             Ok(entries) => {
                 println!("Encontrados {} puertos", entries.len());
-                // Debe haber al menos un puerto (el runtime de test ya usa alguno)
-                assert!(!entries.is_empty(), "Se esperaban puertos, se obtuvo lista vacía");
-                // Verificar estructura básica
                 for e in &entries {
                     assert!(e.port > 0);
                 }
             }
             Err(ScanError::PermissionDenied) => {
-                println!("Test omitido: se requieren privilegios de administrador");
+                println!("Test omitido: se requieren privilegios");
             }
             Err(e) => panic!("Error inesperado: {}", e),
         }
@@ -224,7 +234,7 @@ mod tests {
             user: Some("alice".into()),
             local_addr: "0.0.0.0:8080".into(),
             remote_addr: String::new(),
-            source: "Windows".into(),
+            source: "Linux".into(),
         };
         let json = serde_json::to_string(&entry).expect("Debe serializar");
         assert!(json.contains("8080"));
