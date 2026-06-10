@@ -96,7 +96,7 @@ export function PortTable({ entries, loading, onKill, onRowClick, selectedPid }:
             <Th col="process_name" label="Proceso"   cur={sortKey} dir={sortDir} onSort={handleSort} />
             <Th col="pid"          label="PID"       cur={sortKey} dir={sortDir} onSort={handleSort} />
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Kill</th>
+            <th className="w-12" />
           </tr>
         </thead>
         <tbody>
@@ -107,7 +107,7 @@ export function PortTable({ entries, loading, onKill, onRowClick, selectedPid }:
               <tr
                 key={`${entry.local_addr}-${entry.protocol}-${idx}`}
                 onClick={() => onRowClick(entry)}
-                className={`border-b border-gray-100 cursor-pointer transition-colors
+                className={`group border-b border-gray-100 cursor-pointer transition-colors
                   ${isSelected ? "bg-indigo-50 border-l-2 border-l-indigo-500" : "hover:bg-slate-50"}`}
               >
                 {/* Puerto */}
@@ -164,14 +164,23 @@ export function PortTable({ entries, loading, onKill, onRowClick, selectedPid }:
                 </td>
 
                 {/* Kill */}
-                <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="px-3 py-2.5 text-center w-12" onClick={(e) => e.stopPropagation()}>
                   {entry.pid != null && (
                     <button
                       onClick={() => onKill(entry.pid!, entry.process_name)}
-                      className="px-2 py-1 rounded text-xs font-medium text-red-500 hover:bg-red-50 hover:text-red-700 border border-transparent hover:border-red-200 transition-all"
-                      title={`Matar ${entry.process_name}`}
+                      title={`Matar ${entry.process_name} (PID ${entry.pid})`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                                 opacity-0 group-hover:opacity-100
+                                 text-gray-300 hover:text-red-500 hover:bg-red-50
+                                 transition-all duration-150"
                     >
-                      ✕ Kill
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                      </svg>
                     </button>
                   )}
                 </td>
