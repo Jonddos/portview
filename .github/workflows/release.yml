@@ -62,6 +62,12 @@ jobs:
         run: pnpm install
         working-directory: ui
 
+      # Compilamos el frontend antes que tauri para evitar problemas
+      # con el path de beforeBuildCommand en distintos runners.
+      - name: Build frontend
+        run: pnpm build
+        working-directory: ui
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -73,4 +79,4 @@ jobs:
             Ver el [CHANGELOG](https://github.com/Jonddos/portview/blob/main/CHANGELOG.md) para detalles completos.
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --config '{"build":{"beforeBuildCommand":""}}'
