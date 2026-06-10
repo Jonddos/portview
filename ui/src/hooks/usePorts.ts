@@ -74,7 +74,11 @@ export function usePorts(options: UsePortsOptions = {}): UsePortsReturn {
   // ── Matar proceso ───────────────────────────────────────────────────
   const killProcess = useCallback(async (pid: number, _processName: string) => {
     await invoke("kill_port", { pid });
+    // Refresco inmediato para quitar el proceso muerto
     await refresh();
+    // Refrescos diferidos: captura servicios que reinician rápido en el mismo puerto
+    setTimeout(() => refresh(), 1500);
+    setTimeout(() => refresh(), 4000);
   }, [refresh]);
 
   // ── Filtros ─────────────────────────────────────────────────────────

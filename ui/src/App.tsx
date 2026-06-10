@@ -40,7 +40,7 @@ export default function App() {
     if (!killTarget) return;
     try {
       await killProcess(killTarget.pid, killTarget.processName);
-      setKillSuccess(`"${killTarget.processName}" (PID ${killTarget.pid}) terminado.`);
+      setKillSuccess(`"${killTarget.processName}" (PID ${killTarget.pid}) terminado. Si iniciaste un nuevo servicio en ese puerto, haz click en Refrescar para verlo.`);
       if (selectedEntry?.pid === killTarget.pid) setSelectedEntry(null);
     } catch (e) {
       setKillError(typeof e === "string" ? e : "Error al matar el proceso");
