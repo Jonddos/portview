@@ -74,9 +74,24 @@ pub fn scan_wsl_ports() -> Vec<PortEntry> {
 }
 
 /// Mata un proceso dentro de WSL por su PID de Linux.
+///
+/// Estrategia: obtiene el PGID del proceso y mata todo el grupo (`kill -9 -- -PGID`),
+/// lo que elimina master + workers a la vez (evita que gunicorn/uvicorn respawnee).
+/// Nunca mata el grupo 1 (init). Fallback a `kill -9 PID` si el PGID no se puede obtener.
 pub fn kill_wsl_process(pid: u32) -> Result<(), String> {
+    let script = format!(
+        "PGID=$(ps -o pgid= -p {pid} 2>/dev/null | tr -d ' '); \
+         if [ -n \"$PGID\" ] && [ \"$PGID\" != \"1\" ]; then \
+           kill -9 -- -\"$PGID\" 2>/dev/null; RET=$?; \
+           kill -9 {pid} 2>/dev/null; exit 0; \
+         else \
+           kill -9 {pid}; \
+         fi",
+        pid = pid
+    );
+
     let output = Command::new("wsl")
-        .args(["-e", "kill", "-9", &pid.to_string()])
+        .args(["-e", "sh", "-c", &script])
         .output()
         .map_err(|e| format!("No se pudo ejecutar wsl kill: {}", e))?;
 
@@ -87,7 +102,7 @@ pub fn kill_wsl_process(pid: u32) -> Result<(), String> {
         if err.contains("not permitted") || err.contains("Operation not permitted") {
             Err(format!("Permiso denegado para matar PID {} en WSL", pid))
         } else if err.contains("No such process") {
-            Err(format!("El proceso {} ya no existe en WSL", pid))
+            Ok(()) // ya no existe, consideramos éxito
         } else {
             Err(format!("Error matando PID {} en WSL: {}", pid, err))
         }
@@ -272,6 +287,10 @@ fn parse_netstat_state(s: &str) -> ConnectionState {
 }
 
 /// `users:(("python3",pid=1234,fd=5))` → `("python3", Some(1234))`
+///
+/// Para procesos multi-worker (gunicorn, uvicorn…), ss lista todos los PIDs en el campo
+/// users: el master siempre tiene el PID más bajo (fue el primero en arrancar).
+/// Tomamos el mínimo para asegurarnos de apuntar al proceso padre.
 fn parse_ss_process(s: &str) -> (String, Option<u32>) {
     let name = s
         .find("((\"")
@@ -281,13 +300,18 @@ fn parse_ss_process(s: &str) -> (String, Option<u32>) {
         })
         .unwrap_or_default();
 
-    let pid = s
-        .find("pid=")
-        .and_then(|i| {
-            let rest = &s[i + 4..];
-            let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
-            rest[..end].parse().ok()
-        });
+    // Recoge TODOS los pid= y devuelve el mínimo (= proceso master/padre)
+    let mut pids: Vec<u32> = Vec::new();
+    let mut search = s;
+    while let Some(i) = search.find("pid=") {
+        let rest = &search[i + 4..];
+        let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        if let Ok(p) = rest[..end].parse::<u32>() {
+            pids.push(p);
+        }
+        search = &search[i + 4..];
+    }
+    let pid = pids.into_iter().min();
 
     (name, pid)
 }
