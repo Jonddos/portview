@@ -73,5 +73,4 @@ jobs:
             Ver el [CHANGELOG](https://github.com/Jonddos/portview/blob/main/CHANGELOG.md) para detalles completos.
           releaseDraft: false
           prerelease: false
-          projectPath: ./src-tauri
           args: ${{ matrix.args }}
