@@ -8,58 +8,88 @@ PortView es una aplicación de escritorio que te permite **ver, filtrar y termin
 
 ---
 
+## Instalación
+
+### 🪟 Windows
+
+| Archivo | Descripción |
+|---------|-------------|
+| `PortView_*_x64_es-ES.msi` | **Recomendado.** Instalador MSI, integra con Agregar/Quitar programas |
+| `PortView_*_x64-setup.exe` | Instalador NSIS standalone |
+
+Descarga uno de los dos desde [**Releases**](https://github.com/Jonddos/portview/releases/latest), ejecútalo y sigue el asistente.
+
+---
+
+### 🍎 macOS
+
+| Archivo | Para quién |
+|---------|------------|
+| `PortView_*_aarch64.dmg` | **Mac con chip M1 / M2 / M3 / M4** (Apple Silicon) |
+| `PortView_*_x64.dmg` | Mac con procesador **Intel** |
+
+> 💡 ¿No sabes cuál tienes? Menú Apple → Acerca de este Mac → busca "Apple M..." (Silicon) o "Intel Core" (Intel)
+
+**Cómo instalar:**
+1. Descarga el `.dmg` desde [**Releases**](https://github.com/Jonddos/portview/releases/latest)
+2. Ábrelo y arrastra **PortView** a la carpeta **Aplicaciones**
+3. La primera vez macOS bloqueará la app (no tiene firma de Apple). Abre **Terminal** y ejecuta:
+```bash
+xattr -dr com.apple.quarantine /Applications/PortView.app
+codesign --force --deep --sign - /Applications/PortView.app
+```
+4. Abre PortView desde Launchpad normalmente
+
+---
+
+### 🐧 Linux
+
+| Archivo | Para quién |
+|---------|------------|
+| `PortView_*_amd64.AppImage` | **Cualquier distro** — no requiere instalación |
+| `PortView_*_amd64.deb` | Ubuntu / Debian / Mint |
+| `PortView-*_x86_64.rpm` | Fedora / RHEL / openSUSE |
+
+```bash
+# AppImage (universal)
+chmod +x PortView_*.AppImage && ./PortView_*.AppImage
+
+# .deb (Ubuntu/Debian)
+sudo dpkg -i PortView_*.deb
+
+# .rpm (Fedora/RHEL)
+sudo rpm -i PortView-*.rpm
+```
+
+➡️ **[Ver todos los instaladores en Releases](https://github.com/Jonddos/portview/releases/latest)**
+
+---
+
 ## Características
 
-| Funcionalidad | Estado |
-|---|---|
-| Listar puertos TCP/UDP activos | ✅ Fase 1 |
-| Ver PID, proceso, ruta y usuario | ✅ Fase 1 |
-| Matar proceso por puerto | ✅ Fase 1 |
-| UI gráfica con tabla interactiva | 🔄 Fase 2 |
-| Filtros y búsqueda | 🔄 Fase 4 |
-| Auto-refresco configurable | 🔄 Fase 4 |
-| Elevación de privilegios UAC/sudo | 🔄 Fase 5 |
-| Instaladores para todas las arquitecturas | 🔄 Fase 6 |
+- **Escaneo completo** de puertos TCP/UDP activos con PID, proceso, ruta del ejecutable y usuario
+- **Soporte WSL2** — los puertos corriendo en subsistemas Linux aparecen con badge violeta **WSL**
+- **Kill de proceso** — botón por fila con diálogo de confirmación; en WSL mata el grupo completo (master + workers)
+- **Panel de detalle** — CPU %, memoria, uptime y ruta del ejecutable al hacer click en una fila
+- **Filtros y búsqueda** — por protocolo, estado, texto libre; opción "Solo escuchando"
+- **Auto-refresco** — Manual / 2s / 5s / 10s
+- **Elevación de privilegios** — banner UAC (Windows) / osascript (macOS) / pkexec (Linux)
 
 ---
 
 ## Stack
 
-- **Backend/Core**: [Rust](https://www.rust-lang.org/) — escaneo de puertos con `netstat2` + info de procesos con `sysinfo`
-- **Framework de escritorio**: [Tauri v2](https://tauri.app/) — binarios pequeños (~5-10 MB), webview nativa
-- **Frontend**: React + TypeScript + Vite
-- **Estilos**: Tailwind CSS
-- **Empaquetado**: Tauri Bundler (`.msi`, `.dmg`, `.AppImage`, `.deb`)
+- **Backend/Core**: [Rust](https://www.rust-lang.org/) — `netstat2` + `sysinfo`; Linux nativo via `ss`
+- **Framework**: [Tauri v2](https://tauri.app/) — binarios ~3 MB, webview nativa
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
 
 ---
 
-## Requisitos previos
-
-| Herramienta | Versión mínima | Instalación |
-|---|---|---|
-| Rust + Cargo | 1.77+ | https://rustup.rs |
-| Node.js | 20+ | https://nodejs.org |
-| pnpm | 9+ | `npm i -g pnpm` |
-| Tauri CLI | 2.x | `cargo install tauri-cli` |
-
-### Dependencias del sistema por SO
-
-**Windows**: Visual Studio Build Tools (C++ workload) — Tauri lo indica en su setup.
-
-**macOS**: Xcode Command Line Tools (`xcode-select --install`).
-
-**Linux (Debian/Ubuntu)**:
-```bash
-sudo apt install libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-```
-
----
-
-## Instalación rápida (desarrollo)
+## Desarrollo local
 
 ```bash
 # 1. Clonar
-git clone https://github.com/TU_USUARIO/portview.git
+git clone https://github.com/Jonddos/portview.git
 cd portview
 
 # 2. Instalar dependencias del frontend
@@ -72,79 +102,26 @@ cargo tauri dev
 cargo tauri build
 ```
 
+**Requisitos**: Rust 1.77+, Node.js 20+, pnpm 9+
+
+**Linux**: requiere `libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
+
 ---
 
 ## Estructura del proyecto
 
 ```
 portview/
-├── src-tauri/               # Backend Rust + configuración Tauri
-│   ├── src/
-│   │   ├── core/
-│   │   │   ├── scanner.rs   # Escaneo de puertos (netstat2 + sysinfo)
-│   │   │   ├── process.rs   # Info de proceso + kill(pid)
-│   │   │   └── mod.rs
-│   │   ├── commands/
-│   │   │   ├── ports.rs     # Comandos Tauri expuestos al frontend
-│   │   │   └── mod.rs
-│   │   ├── lib.rs
-│   │   └── main.rs
-│   ├── Cargo.toml
-│   └── tauri.conf.json
-├── ui/                      # Frontend React + Vite
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── PortTable.tsx
-│   │   │   ├── FilterBar.tsx
-│   │   │   └── KillDialog.tsx
-│   │   ├── hooks/
-│   │   │   └── usePorts.ts
-│   │   ├── types/
-│   │   │   └── port.ts
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   └── vite.config.ts
-├── docs/                    # Documentación adicional
-│   ├── ARCHITECTURE.md
-│   ├── DEVELOPMENT.md
-│   ├── PERMISSIONS.md
-│   └── RELEASING.md
-├── scripts/                 # Scripts de utilidad
-│   └── check-deps.sh
-├── .github/
-│   └── workflows/
-│       └── build.yml        # CI multiplataforma
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-└── README.md
+├── src-tauri/          # Backend Rust + configuración Tauri
+│   └── src/core/       # scanner.rs, wsl.rs, process.rs
+├── ui/                 # Frontend React + Vite
+│   └── src/            # components/, hooks/, types/
+├── docs/               # ARCHITECTURE, DEVELOPMENT, PERMISSIONS, RELEASING
+└── .github/workflows/  # CI multiplataforma (release.yml)
 ```
-
----
-
-## Permisos y privilegios
-
-Para ver **todos** los procesos (no solo los del usuario actual) se requieren privilegios elevados:
-
-- **Windows**: el instalador puede solicitar UAC, o se puede re-lanzar con `runas`.
-- **macOS/Linux**: la app funciona sin root pero muestra solo procesos propios; botón "Reiniciar con sudo" disponible.
-
-Ver [docs/PERMISSIONS.md](docs/PERMISSIONS.md) para detalle completo.
-
----
-
-## Roadmap
-
-Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para el plan de fases detallado.
 
 ---
 
 ## Contribuir
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## Licencia
-
-MIT — ver [LICENSE](LICENSE).
+Ver [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md) · [Licencia MIT](LICENSE)
