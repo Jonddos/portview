@@ -25,6 +25,8 @@ export interface PortEntry {
   user: string | null;
   local_addr: string;
   remote_addr: string;
+  /** "Windows" | "WSL: Ubuntu" | "WSL: Debian" … */
+  source: string;
 }
 
 export interface ProcessInfo {

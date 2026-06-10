@@ -15,7 +15,7 @@ const REFRESH_OPTIONS = [
   { label: "10s",    value: 10000 },
 ];
 
-interface KillTarget { pid: number; processName: string }
+interface KillTarget { pid: number; processName: string; source: string }
 
 export default function App() {
   const [refreshInterval, setRefreshInterval] = useState(0);
@@ -30,8 +30,8 @@ export default function App() {
     filters, setFilters, refresh, killProcess,
   } = usePorts({ refreshInterval });
 
-  const handleKillRequest = (pid: number, processName: string) => {
-    setKillTarget({ pid, processName });
+  const handleKillRequest = (pid: number, processName: string, source = "Windows") => {
+    setKillTarget({ pid, processName, source });
     setKillError(null);
     setKillSuccess(null);
   };
@@ -39,7 +39,7 @@ export default function App() {
   const handleKillConfirm = async () => {
     if (!killTarget) return;
     try {
-      await killProcess(killTarget.pid, killTarget.processName);
+      await killProcess(killTarget.pid, killTarget.processName, killTarget.source);
       setKillSuccess(`"${killTarget.processName}" (PID ${killTarget.pid}) terminado. Si iniciaste un nuevo servicio en ese puerto, haz click en Refrescar para verlo.`);
       if (selectedEntry?.pid === killTarget.pid) setSelectedEntry(null);
     } catch (e) {

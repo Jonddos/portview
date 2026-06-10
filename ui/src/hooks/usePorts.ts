@@ -17,7 +17,7 @@ interface UsePortsReturn {
   filters: PortFilters;
   setFilters: (f: Partial<PortFilters>) => void;
   refresh: () => Promise<void>;
-  killProcess: (pid: number, processName: string) => Promise<void>;
+  killProcess: (pid: number, processName: string, source?: string) => Promise<void>;
 }
 
 const DEFAULT_FILTERS: PortFilters = {
@@ -72,11 +72,13 @@ export function usePorts(options: UsePortsOptions = {}): UsePortsReturn {
   }, [refresh, refreshInterval]);
 
   // ── Matar proceso ───────────────────────────────────────────────────
-  const killProcess = useCallback(async (pid: number, _processName: string) => {
-    await invoke("kill_port", { pid });
-    // Refresco inmediato para quitar el proceso muerto
+  const killProcess = useCallback(async (pid: number, _processName: string, source = "Windows") => {
+    if (source.startsWith("WSL")) {
+      await invoke("kill_wsl_process", { pid });
+    } else {
+      await invoke("kill_port", { pid });
+    }
     await refresh();
-    // Refrescos diferidos: captura servicios que reinician rápido en el mismo puerto
     setTimeout(() => refresh(), 1500);
     setTimeout(() => refresh(), 4000);
   }, [refresh]);

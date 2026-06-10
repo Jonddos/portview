@@ -48,6 +48,8 @@ pub struct PortEntry {
     pub local_addr: String,
     /// Dirección remota (vacío para sockets en escucha)
     pub remote_addr: String,
+    /// Origen del socket: "Windows" | "WSL"
+    pub source: String,
 }
 
 // ─────────────────────────────────────────────
@@ -66,13 +68,12 @@ pub enum ScanError {
 // Función principal
 // ─────────────────────────────────────────────
 
-/// Devuelve todos los sockets TCP/UDP activos en el sistema,
-/// enriquecidos con información del proceso propietario.
+/// Devuelve todos los sockets TCP/UDP activos: Windows + WSL (si está instalado).
 pub fn scan_ports() -> Result<Vec<PortEntry>, ScanError> {
     debug!("Iniciando escaneo de puertos...");
 
-    // 1. Obtener sockets del sistema
-    let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    // 1. Sockets Windows
+    let af_flags    = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
     let proto_flags = ProtocolFlags::TCP | ProtocolFlags::UDP;
 
     let sockets = get_sockets_info(af_flags, proto_flags).map_err(|e| {
@@ -84,21 +85,24 @@ pub fn scan_ports() -> Result<Vec<PortEntry>, ScanError> {
         }
     })?;
 
-    debug!("Encontrados {} sockets", sockets.len());
-
-    // 2. Inicializar sysinfo para enriquecer con datos de proceso
     let mut sys = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
     sys.refresh_all();
 
-    // 3. Mapear cada socket a un PortEntry
-    let entries: Vec<PortEntry> = sockets
+    let mut entries: Vec<PortEntry> = sockets
         .into_iter()
         .filter_map(|s| socket_to_entry(&s, &sys))
         .collect();
 
-    debug!("Escaneo completado: {} entradas", entries.len());
+    debug!("Windows: {} entradas", entries.len());
+
+    // 2. Sockets WSL (no bloquea si WSL no está disponible)
+    let wsl_entries = crate::core::wsl::scan_wsl_ports();
+    debug!("WSL: {} entradas", wsl_entries.len());
+    entries.extend(wsl_entries);
+
+    debug!("Total: {} entradas", entries.len());
     Ok(entries)
 }
 
@@ -123,6 +127,7 @@ fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
             user,
             local_addr: format!("{}:{}", tcp.local_addr, tcp.local_port),
             remote_addr: format!("{}:{}", tcp.remote_addr, tcp.remote_port),
+            source: "Windows".to_string(),
         }),
         ProtocolSocketInfo::Udp(udp) => Some(PortEntry {
             port: udp.local_port,
@@ -134,6 +139,7 @@ fn socket_to_entry(socket: &SocketInfo, sys: &System) -> Option<PortEntry> {
             user,
             local_addr: format!("{}:{}", udp.local_addr, udp.local_port),
             remote_addr: String::new(),
+            source: "Windows".to_string(),
         }),
     }
 }
@@ -218,6 +224,7 @@ mod tests {
             user: Some("alice".into()),
             local_addr: "0.0.0.0:8080".into(),
             remote_addr: String::new(),
+            source: "Windows".into(),
         };
         let json = serde_json::to_string(&entry).expect("Debe serializar");
         assert!(json.contains("8080"));

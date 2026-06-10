@@ -48,3 +48,16 @@ pub async fn check_privileges() -> bool {
 pub async fn relaunch_as_admin() -> Result<(), String> {
     crate::privileges::relaunch_as_admin()
 }
+
+/// Mata un proceso dentro de WSL usando su PID de Linux.
+#[tauri::command]
+pub async fn kill_wsl_process(pid: u32) -> Result<(), String> {
+    tracing::info!("kill_wsl_process PID={}", pid);
+    crate::core::wsl::kill_wsl_process(pid)
+}
+
+/// Indica si WSL está disponible en el sistema.
+#[tauri::command]
+pub async fn wsl_available() -> bool {
+    crate::core::wsl::is_wsl_available()
+}

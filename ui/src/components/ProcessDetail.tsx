@@ -5,7 +5,7 @@ import type { PortEntry, ProcessInfo } from "../types/port";
 interface ProcessDetailProps {
   entry: PortEntry;
   onClose: () => void;
-  onKill: (pid: number, processName: string) => void;
+  onKill: (pid: number, processName: string, source: string) => void;
 }
 
 // ── Helpers de formato ──────────────────────────────────────────────
@@ -190,7 +190,7 @@ export function ProcessDetail({ entry, onClose, onKill }: ProcessDetailProps) {
       {entry.pid != null && (
         <div className="px-4 py-3 border-t border-gray-200 shrink-0">
           <button
-            onClick={() => onKill(entry.pid!, entry.process_name)}
+            onClick={() => onKill(entry.pid!, entry.process_name, entry.source)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2
                        bg-red-50 text-red-600 border border-red-200 rounded-lg
                        text-sm font-medium hover:bg-red-100 transition-colors"

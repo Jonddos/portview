@@ -4,7 +4,7 @@ import type { PortEntry, ConnectionState } from "../types/port";
 interface PortTableProps {
   entries: PortEntry[];
   loading: boolean;
-  onKill: (pid: number, processName: string) => void;
+  onKill: (pid: number, processName: string, source: string) => void;
   onRowClick: (entry: PortEntry) => void;
   selectedPid: number | null;
 }
@@ -147,11 +147,17 @@ export function PortTable({ entries, loading, onKill, onRowClick, selectedPid }:
                   <div className="flex items-center gap-2">
                     <ProcessAvatar name={entry.process_name} />
                     <span
-                      className="font-medium text-gray-800 truncate max-w-[130px]"
+                      className="font-medium text-gray-800 truncate max-w-[110px]"
                       title={entry.exe_path ?? entry.process_name}
                     >
                       {entry.process_name || <span className="text-gray-300 font-normal">—</span>}
                     </span>
+                    {entry.source.startsWith("WSL") && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200"
+                            title={entry.source}>
+                        WSL
+                      </span>
+                    )}
                   </div>
                 </td>
 
@@ -167,7 +173,7 @@ export function PortTable({ entries, loading, onKill, onRowClick, selectedPid }:
                 <td className="px-3 py-2.5 text-center w-12" onClick={(e) => e.stopPropagation()}>
                   {entry.pid != null && (
                     <button
-                      onClick={() => onKill(entry.pid!, entry.process_name)}
+                      onClick={() => onKill(entry.pid!, entry.process_name, entry.source)}
                       title={`Matar ${entry.process_name} (PID ${entry.pid})`}
                       className="inline-flex items-center justify-center w-7 h-7 rounded-lg
                                  opacity-0 group-hover:opacity-100
